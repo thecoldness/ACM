@@ -1,0 +1,80 @@
+#include <cstdio>
+#include <cctype>
+#include <cstring>
+#include <algorithm>
+using namespace std;
+
+namespace thecold
+{
+	inline int read()
+	{
+		int res = 0; bool flag = false;
+		char c = getchar();
+		while(!isdigit(c))
+			flag = (c == '-') , c = getchar();
+		while(isdigit(c))
+			res = res * 10 + (c ^ 48) , c = getchar();
+		return !flag ? res : -res;
+	}
+
+	const int Max_n = 1e3 + 15;
+	const int Max_b = (1 << 10) - 1;
+	const int jzp = 1e9 + 7;
+
+	int n , k , pos[Max_n] , r[Max_n] , lim[Max_n];
+	int f[Max_n][Max_b + 5] , ans;
+
+	inline void add(int &x , const int y)
+	{
+		x += y; if(x >= jzp) x -= jzp;
+	}
+
+	inline void main()
+	{
+		n = read() , k = read() , f[0][0] = 1;
+		for(int i = 0 ; i <= n ; ++ i) lim[i] = (1 << 10) - 1;
+		for(int i = 1 ; i <= k ; ++ i)
+		{
+			pos[i] = read() , r[i] = read(); int tmp = 1;
+			for(int j = pos[i] - r[i] + 1 ; j < pos[i] + r[i] ; ++ j)
+				lim[j] &= tmp , tmp = ((tmp << 1) | 1) & Max_b;
+			lim[pos[i] + r[i]] &= Max_b ^ (1 << ((r[i] << 1) - 1)) , tmp = Max_b ^ ((1 << (r[i] << 1)) - 2);
+			for(int j = pos[i] + r[i] + 1 ; j <= pos[i] + r[i] + 10 ; ++ j)
+				lim[j] &= tmp , tmp = ((tmp << 1) | 1) & Max_b;
+		}
+		// for(int i = 0 ; i < n ; ++ i) bug
+		for(int i = 0 ; i <= n ; ++ i)
+			for(int s = Max_b ; s >= 0 ; -- s)
+			if(f[i][s])	
+			{
+				for(int j = 0 ; j < 1 << 5 ; ++ j)
+				{
+					// int tmp = ((s << 1) | 1) & lim[i + 1] , pos = 0; bug
+					// if((s & j) != j) break; bug
+					int tmp = ((s << 1) | 1) & Max_b , pos = 0;
+					for(int k = 0 ; k <= 4 ; ++ k) if(j & (1 << k)) pos |= 1 << ((k << 1) | 1);
+					if((pos & (s & lim[i])) != pos) continue;
+					// for(int k = 4 ; k >= 0 ; -- k) if(j & (1 << k)) {tmp &= Max_b ^ ((1 << (k + 1)) - 2); break;} bug
+					for(int k = 4 ; k >= 0 ; -- k) if(j & (1 << k)) {tmp &= Max_b ^ ((1 << (k * 2 + 2)) - 2); break;}
+					// if(i == 1 && tmp == 3) puts("qwq");
+					add(f[i + 1][tmp] , f[i][s]);
+				}
+			}
+		/*for(int i = 0 ; i <= n ; ++ i)
+		{
+			for(int j = 0 ; j <= 16 ; ++ j) printf("%d " , f[i][j]);
+			puts("");
+		}
+		for(int i = 0 ; i <= n ; ++ i) printf("%d " , Max_b ^ lim[i]);
+		puts("");*/
+		for(int i = 0 ; i <= Max_b ; ++ i) add(ans , f[n + 1][i]);
+		// printf("%d\n" , f[n + 1][0]); bug
+		printf("%d\n" , ans);
+	}
+}
+
+int main()
+{
+	thecold::main();
+	return 0;
+}
