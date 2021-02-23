@@ -1,0 +1,127 @@
+#include <cstdio>
+#include <cstring>
+#include <algorithm>
+#include <cctype>
+using namespace std;
+
+namespace thecold
+{
+	inline int read()
+	{
+		int res = 0; bool flag = false;
+		char c = getchar();
+		while(!isdigit(c))
+			flag = (c == '-') , c = getchar();
+		while(isdigit(c))
+			res = res * 10 + (c ^ 48) , c = getchar();
+		return !flag ? res : -res;
+	}
+
+	const int Max_n = 1e6 + 5;
+	const int Max_m = 1e7 + 5;
+
+	int prime[Max_m] , mindiv[Max_m] , tot;
+	int n , a[Max_n] , fa[Max_n] , L[Max_n];
+	int R[Max_n] , pos[Max_m];
+
+	inline void prepare()
+	{
+		const int n = 1e7;
+		for(int i = 2 ; i <= n ; ++ i)
+		{
+			if(!mindiv[i]) mindiv[i] = i , prime[ ++ tot] = i;
+			for(int j = 1 ; j <= tot && 1ll * prime[j] * i <= n ; ++ j)
+			{
+				mindiv[i * prime[j]] = prime[j];
+				if(i % prime[j] == 0) break;
+			}
+		}
+	}
+
+	// inline void insert(int x)
+	// {
+	// 	while(x != 1)
+	// 	{
+	// 		int md = mindiv[x] , cnt = 0;
+	// 		while(x % md == 0) x /= md , ++ cnt;
+	// 		buk[md] += cnt;
+	// 	}
+	// }
+
+	// inline void del(int x)
+	// {
+	// 	while(x != 1)
+	// 	{
+	// 		int md = mindiv[x] , cnt = 0;
+	// 		while(x % md == 0) x /= md , ++ cnt;
+	// 		buk[md] -= cnt;
+	// 	}
+	// }
+
+	// inline bool check(int x)
+	// {
+	// 	while(x != 1)
+	// 	{
+	// 		int md = mindiv[x] , cnt = 0;
+	// 		while(x % md == 0) x /= md , ++ cnt;
+	// 		if(buk[md] > cnt) return false;
+	// 	}
+	// 	return true;
+	// }
+
+	inline void solve(const int l , const int r , const int from)
+	{
+		if(l > r) return; if(l == r) return fa[l] = from , void();
+		for(int i = l , j = r ; i <= j ; ++ i , -- j)
+		{
+			if(L[i] < l && R[i] > r)
+			{
+				solve(i + 1 , r , i) , solve(l , i - 1 , i);
+				return fa[i] = from , void();
+			}
+			if(L[j] < l && R[j] > r)
+			{
+				solve(l , j - 1 , j) , solve(j + 1 , r , j);
+				return fa[j] = from , void();
+			}
+		}
+		puts("impossible"); exit(0);
+	}
+
+	inline void main()
+	{
+		n = read(); prepare();
+		for(int i = 1 ; i <= n ; ++ i) a[i] = read();
+		for(int i = 1 ; i <= n ; ++ i)
+		{
+			int tmp = a[i];
+			while(tmp != 1)
+			{
+				int md = mindiv[tmp];
+				while(tmp % md == 0) tmp /= md;
+				L[i] = max(L[i] , pos[md]) , pos[md] = i;
+			}
+		}
+		memset(pos , 0x3f , sizeof(pos)) , memset(R , 0x3f , sizeof(R));
+		for(int i = n ; i >= 1 ; -- i)
+		{
+			int tmp = a[i];
+			while(tmp != 1)
+			{
+				int md = mindiv[tmp];
+				while(tmp % md == 0) tmp /= md;
+				R[i] = min(R[i] , pos[md]) , pos[md] = i;
+			}	
+		}
+		// for(int i = 1 ; i <= n ; ++ i) printf("%d %d\n" , L[i] , R[i]);
+		solve(1 , n , 0);
+		for(int i = 1 ; i <= n ; ++ i) printf("%d " , fa[i]);
+		puts("");
+	}
+}
+
+int main()
+{
+	thecold::main();
+	return 0;
+}
