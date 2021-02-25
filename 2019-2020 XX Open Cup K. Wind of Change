@@ -1,0 +1,289 @@
+#include <cstdio>
+#include <cstring>
+#include <cctype>
+#include <algorithm>
+#include <vector>
+#include <cassert>
+#define int long long
+using namespace std;
+
+namespace thecold
+{
+	inline int read()
+	{
+		int res = 0; bool flag = false;
+		char c = getchar();
+		while(!isdigit(c))
+			flag = (c == '-') , c = getchar();
+		while(isdigit(c))
+			res = res * 10 + (c ^ 48) , c = getchar();
+		return !flag ? res : -res;
+	}
+
+	const int Max_n = 2e5 + 5e4 + 5;
+	const int INF = 1e9;
+
+	typedef long long ll;
+
+	struct node
+	{
+		int nex , to , val;
+		node(int a , int b , int c)
+		{
+			nex = a , to = b , val = c;
+		}
+		node(){}
+	}edge[2][Max_n << 1];
+
+	int head[2][Max_n] , tot[2] , n;
+	int logm[Max_n << 1];
+
+	bool vis[2][Max_n];
+
+	vector<int> v[2][Max_n];
+
+	inline void add_edge(const int x , const int y , const int z , const int type)
+	{
+		edge[type][ ++ tot[type]] = node(head[type][x] , y , z) , head[type][x] = tot[type];
+		edge[type][ ++ tot[type]] = node(head[type][y] , x , z) , head[type][y] = tot[type];
+	}
+
+	ll dis[2][Max_n];
+
+	int root , siz[Max_n] , mx[Max_n] , beg[2];
+
+	void dfs_siz(const int now , const int from , const int type)
+	{
+		siz[now] = 1;
+		for(int i = head[type][now] ; i ; i = edge[type][i].nex)
+		{
+			int nex = edge[type][i].to; if(nex == from || vis[type][nex]) continue;
+			dfs_siz(nex , now , type); siz[now] += siz[nex];
+		}
+	}
+
+	void dfs_root(const int now , const int from , const int all , const int type)
+	{
+		siz[now] = 1 , mx[now] = -INF;
+		for(int i = head[type][now] ; i ; i = edge[type][i].nex)
+		{
+			int nex = edge[type][i].to; if(nex == from || vis[type][nex]) continue;
+			dfs_root(nex , now , all , type); 
+			siz[now] += siz[nex] , mx[now] = max(mx[now] , siz[nex]);
+		}
+		mx[now] = max(mx[now] , all - siz[now]);
+		if(mx[now] < mx[root]) root = now;
+	}
+
+	void solve(const int now , const int all , const int type , const int from)
+	{
+		root = 0; dfs_root(now , 0 , all , type); vis[type][root] = true;
+		if(from == 0) beg[type] = root;
+		else v[type][from].push_back(root); 
+		int nowroot = root; dfs_siz(nowroot , 0 , type);
+		for(int i = head[type][nowroot] ; i ; i = edge[type][i].nex)
+		{
+			int nex = edge[type][i].to; if(nex == from || vis[type][nex]) continue;
+			// solve(nex , siz[nex] , type , now);bug
+			solve(nex , siz[nex] , type , nowroot);
+		}
+	}
+
+	int fa[2][Max_n][20] , dep[2][Max_n] , tim[2] , dfn[2][Max_n];
+
+	struct Node
+	{
+		int dep , pos;
+		Node(int a , int b)
+		{
+			dep = a , pos = b;
+		}
+		Node(){}
+		bool operator < (const Node &a) const
+		{
+			return dep < a.dep;
+		}
+	}mn[2][20][Max_n << 1];
+
+	void dfs_tree(const int now , const int from , const int type)
+	{	
+		dep[type][now] = dep[type][from] + 1;// fa[type][now][0] = from;
+		/*for(int i = 1 ; i <= logm[dep[type][now]] ; ++ i)
+			fa[type][now][i] = fa[type][fa[type][now][i - 1]][i - 1];*/
+		mn[type][0][ ++ tim[type]] = Node(dep[type][now] , now) , dfn[type][now] = tim[type];
+		for(int i = head[type][now] ; i ; i = edge[type][i].nex)
+		{
+			int nex = edge[type][i].to; if(nex == from) continue;
+			dis[type][nex] = dis[type][now] + edge[type][i].val;
+			dfs_tree(nex , now , type);
+			mn[type][0][ ++ tim[type]] = Node(dep[type][now] , now);
+		}
+	}
+
+	inline void build()
+	{
+		assert(tim[0] == 2 * n - 1) , assert(tim[1] == 2 * n - 1);
+		const int len = 2 * n - 1;
+		for(int i = 1 ; i <= logm[len] ; ++ i)
+			for(int j = 1 ; j + (1 << i) - 1 <= len ; ++ j)
+				mn[0][i][j] = min(mn[0][i - 1][j] , mn[0][i - 1][j + (1 << (i - 1))]),
+				mn[1][i][j] = min(mn[1][i - 1][j] , mn[1][i - 1][j + (1 << (i - 1))]);
+	}
+
+	inline int lca(const int x , const int y , const int type)
+	{
+		/*while(dep[type][x] > dep[type][y])
+			x = fa[type][x][logm[dep[type][x] - dep[type][y]]];
+		while(dep[type][y] > dep[type][x])
+			y = fa[type][y][logm[dep[type][y] - dep[type][x]]];
+		if(x == y) return x;
+		for(int i = logm[dep[type][x]] ; i >= 0 ; -- i)
+		{
+			if(fa[type][x][i] == fa[type][y][i]) continue;
+			x = fa[type][x][i] , y = fa[type][y][i];
+		}
+		return fa[type][x][0];*/
+		int l = dfn[type][x] , r = dfn[type][y];
+		if(l > r) swap(l , r);
+		int len = r - l + 1;
+		return min(mn[type][logm[len]][l] , mn[type][logm[len]][r - (1 << logm[len]) + 1]).pos;
+	}
+
+	inline ll disted(const int x , const int y , const int type)
+	{
+		int l = lca(x , y , type); //return dis[type][x] + dis[type][y] - dis[type][l]; bug
+		return dis[type][x] + dis[type][y] - 2 * dis[type][l];
+	}
+
+	int tree_fa[2][Max_n] , tree_dep[2][Max_n] , st[Max_n] , tp;
+
+	ll mndis[Max_n] , ans[Max_n] , tree_dis[2][Max_n][20];
+
+	void dfs_fa(const int now , const int from , const int type)
+	{
+		tree_fa[type][now] = from , tree_dep[type][now] = tree_dep[type][from] + 1;
+		int lst = from;
+		for(int i = 1 ; i <= tree_dep[type][now] - 1 ; ++ i)
+			tree_dis[type][now][i] = disted(now , lst , type) , lst = tree_fa[type][lst];
+			// , printf("%d %d %d %lld\n" , now , lst , type , tree_dis[type][now][i]
+		int sz = v[type][now].size();
+		for(int i = 0 ; i < sz ; ++ i) dfs_fa(v[type][now][i] , now , type);
+	}
+
+	bool reach[Max_n];
+
+	inline ll dist(const int x , const int y , const int type)
+	{
+		// int ret = 
+		// printf("%d %d %d %d\n" , x , y , type , ret);
+		return tree_dis[type][x][tree_dep[type][x] - tree_dep[type][y]];
+	}
+
+	void dfs_solve(const int now , const int beg , const ll val)// 求第一棵树在第二棵树上的答案
+	{
+		if(!now) return;
+		// ans[beg] = max(ans[beg] , dist(now , beg , 1) + val + mndis[now]);bug
+		ans[beg] = min(ans[beg] , dist(beg , now , 1) + val + mndis[now]);
+		dfs_solve(tree_fa[1][now] , beg , val);
+	}
+
+	void dfs_ans(const int now , const int beg)// 第一棵树的所有儿子
+	{
+		dfs_solve(now , now , dist(now , beg , 0)); int sz = v[0][now].size();
+		for(int i = 0 ; i < sz ; ++ i)	dfs_ans(v[0][now][i] , beg);
+	}
+
+	void dfs_add(const int now , const int beg , const ll val)// 修改第二棵树
+	{
+		if(!now) return;
+		if(!reach[now]) reach[now] = true , st[ ++ tp] = now;
+		mndis[now] = min(mndis[now] , val + dist(beg , now , 1));
+		dfs_add(tree_fa[1][now] , beg , val);
+	}
+
+	void dfs_try(const int now , const int beg)// 把第一棵树的某个子树加到第二棵树上
+	{
+		dfs_add(now , now , dist(now , beg , 0)); int sz = v[0][now].size();
+		for(int i = 0 ; i < sz ; ++ i) dfs_try(v[0][now][i] , beg);
+	}
+
+	inline void solve_tree(const int now)
+	{
+		dfs_add(now , now , 0);// bug
+		int sz = v[0][now].size();
+		for(int i = 0 ; i < sz ; ++ i)
+		{
+			int nex = v[0][now][i];
+			dfs_ans(nex , now); // dfs_add(nex , now , dist(nex , now , 0)); bug
+			dfs_try(nex , now);
+		}
+		while(tp) mndis[st[tp]] = 1e18 , reach[st[tp]] = false , -- tp;
+		for(int i = sz - 1 ; i >= 0 ; -- i)
+		{
+			int nex = v[0][now][i];
+			dfs_ans(nex , now);// , dfs_add(nex , now , dist(nex , now , 0)); bug
+			dfs_try(nex , now);
+		}
+		dfs_solve(now , now , 0);// bug
+		while(tp) mndis[st[tp]] = 1e18 , reach[st[tp]] = false , -- tp;// bug
+		/*dfs_add(now , now , 0); int sz = v[0][now].size();
+		for(int i = 0 ; i < sz ; ++ i) dfs_try(v[0][now][i] , now);
+		for(int i = 0 ; i < sz ; ++ i) dfs_ans(v[0][now][i] , now);
+		dfs_solve(now , now , 0);
+		while(tp) mndis[st[tp]] = 1e15 , reach[st[tp]] = false , -- tp;*/
+	}
+
+	inline void dfs_check(const int now , const int from , const int dep , const int type)
+	{
+		// if(dep > logm[n] + 1) printf("%d %d\n" , dep , logm[n] + 1);
+		assert(dep <= logm[n] + 3);
+		int sz = v[type][now].size();
+		for(int i = 0 ; i < sz ; ++ i)
+			dfs_check(v[type][now][i] , now , dep + 1 , type);
+	}
+
+	inline void main()
+	{
+		n = read() , mx[0] = INF; memset(ans , 0x3f , sizeof(ans));
+		for(int i = 1 ; i < n ; ++ i)
+		{
+			int ui = read() , vi = read() , ti = read();
+			add_edge(ui , vi , ti , 0);
+		}
+		for(int i = 1 ; i < n ; ++ i)
+		{
+			int ui = read() , vi = read() , ti = read();
+			add_edge(ui , vi , ti , 1);
+		}
+		for(int i = 2 ; i <= 2 * n ; ++ i) logm[i] = logm[i / 2] + 1;
+		dfs_tree(1 , 0 , 0) , dfs_tree(1 , 0 , 1); build();
+		solve(1 , n , 0 , 0) , solve(1 , n , 1 , 0); 
+		dfs_fa(beg[1] , 0 , 1) , dfs_fa(beg[0] , 0 , 0);
+		for(int i = 1 ; i <= n ; ++ i) mndis[i] = 1e18;
+		for(int i = 1 ; i <= n ; ++ i) solve_tree(i);
+		// dfs_check(beg[0] , 0 , 1 , 0) , dfs_check(beg[1] , 0 , 1 , 1);
+		for(int i = 1 ; i <= n ; ++ i) printf("%lld\n" , ans[i]);
+		/*for(int i = 1 ; i <= n ; ++ i)
+		{
+			int sz = v[0][i].size();
+			printf("%d : " , i);
+			for(int j = 0 ; j < sz ; ++ j) printf("%d " , v[0][i][j]);
+			puts("");
+		}
+		puts("");
+		for(int i = 1 ; i <= n ; ++ i)
+		{
+			int sz = v[1][i].size();
+			printf("%d : " , i);
+			for(int j = 0 ; j < sz ; ++ j) printf("%d " , v[1][i][j]);
+			puts("");
+		}*/
+	}
+}
+
+signed main()
+{
+	// freopen("data.in" , "r" , stdin);
+	thecold::main();
+	return 0;
+}
